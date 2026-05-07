@@ -3,24 +3,49 @@ from dotenv import load_dotenv
 from groq import Groq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import streamlit as st
 
 load_dotenv()
-
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-db = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
-
+def build_db():
+    loader = PyPDFLoader("docs/hr_policy.pdf")
+    pages = loader.load()
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50
+    )
+    chunks = splitter.split_documents(pages)
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    db = Chroma.from_documents(
+        chunks,
+        embeddings,
+        persist_directory="chroma_db"
+    )
+    return db
+@st.cache_resource
+def load_db():
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    if not os.path.exists("chroma_db"):
+        st.info("Setting up knowledge base for first time...")
+        return build_db()
+    return Chroma(
+        persist_directory="chroma_db",
+        embedding_function=embeddings
+    )
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 st.set_page_config(page_title="HR Assistant", page_icon="👔")
 st.title("👔 HR Onboarding Assistant")
 st.caption("Ask me anything about HR policies, leave, attendance, and benefits.")
 
+db = load_db()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
 if question := st.chat_input("Ask your HR question..."):
     st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
@@ -53,7 +78,6 @@ Your tone must be:
             }
         ]
     )
-
     answer = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": answer})
     with st.chat_message("assistant"):
