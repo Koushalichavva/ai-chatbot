@@ -6,27 +6,32 @@ from langchain_community.vectorstores import Chroma
 
 load_dotenv()
 
-# Load ChromaDB
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 db = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
-
-# Groq client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+question = "explain simply about leave policy"
 
-# Your question
-question = "What are Koushali's key skills and experiences mentioned in the resume?"
-
-# Step 1 - Search relevant chunks
 results = db.similarity_search(question, k=3)
 context = "\n\n".join([r.page_content for r in results])
-
-# Step 2 - Send to Groq with context
 response = client.chat.completions.create(
     model="llama-3.3-70b-versatile",
     messages=[
         {
             "role": "system",
-            "content": "You are a helpful assistant. Answer questions using only the context provided."
+            "content": """You are an HR Onboarding and Policy Explanation Assistant.
+            Your purpose is to explain company onboarding steps, HR policies,
+            attendance rules, leave policies, and benefits in a clear and simple manner.
+            You must follow these rules strictly:
+            - Provide INFORMATION ONLY.
+            - Do NOT approve or reject leave, payroll, or benefits.
+            - Do NOT handle exceptions or personal employee cases.
+            - Do NOT request or process personal employee data.
+            - If a request requires approval or HR intervention,
+            politely ask the user to contact the HR department.
+            Your tone must be:
+            - Professional
+            - Clear
+            - Employee-friendly"""
         },
         {
             "role": "user",
@@ -34,6 +39,5 @@ response = client.chat.completions.create(
         }
     ]
 )
-
 print("Answer:")
 print(response.choices[0].message.content)
