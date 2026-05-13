@@ -71,7 +71,17 @@ if question := st.chat_input("Ask your HR question..."):
     with st.chat_message("user"):
         st.markdown(question)
 
-    results = db.similarity_search(question, k=3)
+    # Use last assistant response + current question for better retrieval
+    if len(st.session_state.messages) > 1:
+        last_response = next(
+            (m["content"] for m in reversed(st.session_state.messages[:-1])
+             if m["role"] == "assistant"), ""
+        )
+        search_query = f"{last_response} {question}"
+    else:
+        search_query = question
+
+    results = db.similarity_search(search_query, k=3)
     context = "\n\n".join([r.page_content for r in results])
 
     # Build conversation history
