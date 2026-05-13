@@ -4,4 +4,4 @@ loader = PyPDFLoader("docs/Koushali_resume.pdf")
 pages = loader.load()
 print(f"Total pages loaded: {len(pages)}")
 print("\nFirst page content preview:")
-print(pages[0].page_content[:700])  # prints first 500 characters
+print(pages[0].page_content[:700]) 
