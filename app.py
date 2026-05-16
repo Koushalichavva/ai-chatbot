@@ -84,9 +84,10 @@ if question := st.chat_input("Ask your HR question..."):
     results = db.similarity_search(search_query, k=3)
     context = "\n\n".join([r.page_content for r in results])
 
-    # Build conversation history
+    # Limit history to last 6 messages only — context window management
+    recent_messages = st.session_state.messages[-6:-1]
     history = ""
-    for msg in st.session_state.messages[:-1]:
+    for msg in recent_messages:
         role = "User" if msg["role"] == "user" else "Assistant"
         history += f"{role}: {msg['content']}\n"
 
